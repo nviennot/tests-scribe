@@ -6,6 +6,7 @@ import sys
 import subprocess
 import re
 import unittest
+import scribe
 
 COMPILER_CMD = 'gcc -O2 -x c - -o'
 DIST_DIR = sys.path[0]
@@ -32,6 +33,7 @@ class ScribeTestCase(unittest.TestCase):
         self.headers_file = headers
         self.executable = re.sub('\.[^.]*$', '', source) \
                             .replace(TESTS_DIR, BUILD_DIR)
+        self.logfile = self.executable + '.log'
         unittest.TestCase.__init__(self)
 
     def shortDescription(self):
@@ -50,14 +52,12 @@ class ScribeTestCase(unittest.TestCase):
         # If not, compiling the sources
         code = open(self.source_file, 'rb').read()
 
-        # If the main() function is not provided, provide it
-        if (code.translate(None, b'\n\r\t ').find(b'main(') == -1):
-            code = b'int main() { ' + code + b' return 0; }'
-
         code = b''.join(open(f, 'rb').read() for f in self.headers_file) + code
 
         out_dir = os.path.split(self.executable)[0]
         mkdir_p(out_dir)
+
+        print("Compiling %s" % self.source_file)
         compiler = subprocess.Popen(COMPILER_CMD.split() + [self.executable],
                                     stdin=subprocess.PIPE)
         compiler.communicate(code)
@@ -65,7 +65,25 @@ class ScribeTestCase(unittest.TestCase):
             raise CompileError()
 
     def runTest(self):
-        pass
+        log = open(self.logfile, 'w+')
+
+        ps = scribe.Popen(log, self.executable, record = True,
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        (rcd_stdout, rcd_stderr) = ps.communicate()
+        rcd_err = ps.wait()
+
+        log.seek(0)
+
+        ps = scribe.Popen(log, replay = True, backtrace_len = 100,
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        (rpl_stdout, rpl_stderr) = ps.communicate()
+        rpl_err = ps.wait()
+
+        self.assertEqual(rcd_stdout, rcd_stdout)
+        self.assertEqual(rcd_stderr, rcd_stderr)
+        self.assertEqual(rcd_err, rcd_err)
+
+
 
 def get_sources(path, headers=[]):
     """ returns a list of tuples (source, [headers])
