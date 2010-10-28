@@ -26,7 +26,7 @@ class CompileError(BaseException):
     pass
 
 class ScribeTestCase(unittest.TestCase):
-    def __init__(self, source, headers):
+    def __init__(self, source, headers, show_dmesg=False):
         self.description = source
         self.files = headers + [source]
         self.source_file = source
@@ -34,6 +34,7 @@ class ScribeTestCase(unittest.TestCase):
         self.executable = re.sub('\.[^.]*$', '', source) \
                             .replace(TESTS_DIR, BUILD_DIR)
         self.logfile = self.executable + '.log'
+        self.show_dmesg = show_dmesg
         unittest.TestCase.__init__(self)
 
     def shortDescription(self):
@@ -68,6 +69,7 @@ class ScribeTestCase(unittest.TestCase):
         log = open(self.logfile, 'w+')
 
         ps = scribe.Popen(log, self.executable, record = True,
+                          show_dmesg = self.show_dmesg,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (rcd_stdout, rcd_stderr) = ps.communicate()
         rcd_err = ps.wait()
@@ -75,6 +77,7 @@ class ScribeTestCase(unittest.TestCase):
         log.seek(0)
 
         ps = scribe.Popen(log, replay = True, backtrace_len = 100,
+                          show_dmesg = self.show_dmesg,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (rpl_stdout, rpl_stderr) = ps.communicate()
         rpl_err = ps.wait()
@@ -107,11 +110,14 @@ if __name__ == '__main__':
     parser.add_option("-v", "--verbose", dest="verbosity",
                       action="count", default=0,
                       help="display test progress, pass twice for more verbosity")
+    parser.add_option("-d", "--dmesg",
+                      action="store_true", dest="dmesg", default=False,
+                      help="Show a dmesg trace if the replay diverges")
     (options, args) = parser.parse_args()
 
     path_filter = args or ['']
 
-    test_cases = (ScribeTestCase(source, headers)
+    test_cases = (ScribeTestCase(source, headers, show_dmesg = options.dmesg)
                   for source, headers in get_sources(TESTS_DIR)
                   if True in (source.find(f) != -1 for f in path_filter))
     test_suite = unittest.TestSuite()
