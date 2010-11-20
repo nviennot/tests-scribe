@@ -26,19 +26,46 @@ class CompileError(BaseException):
     pass
 
 class ScribeTestCase(unittest.TestCase):
-    def __init__(self, source, headers, show_dmesg=False):
-        self.description = source
-        self.files = headers + [source]
-        self.source_file = source
-        self.headers_file = headers
-        self.executable = re.sub('\.[^.]*$', '', source) \
-                            .replace(TESTS_DIR, BUILD_DIR)
-        self.logfile = self.executable + '.log'
+    def __init__(self, executable, show_dmesg=False):
+        self.executable = executable
+        self.logfile = executable + '.log'
+        self.description = executable
         self.show_dmesg = show_dmesg
         unittest.TestCase.__init__(self)
 
     def shortDescription(self):
         return self.description
+
+    def runTest(self):
+        log = open(self.logfile, 'w+')
+
+        ps = scribe.Popen(log, self.executable, record = True,
+                          show_dmesg = self.show_dmesg,
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        (rcd_stdout, rcd_stderr) = ps.communicate()
+        rcd_err = ps.wait()
+
+        log.seek(0)
+
+        ps = scribe.Popen(log, replay = True, backtrace_len = 100,
+                          show_dmesg = self.show_dmesg,
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        (rpl_stdout, rpl_stderr) = ps.communicate()
+        rpl_err = ps.wait()
+
+        self.assertEqual(rcd_stdout, rcd_stdout)
+        self.assertEqual(rcd_stderr, rcd_stderr)
+        self.assertEqual(rcd_err, rcd_err)
+
+
+class ScribeGCCTestCase(ScribeTestCase):
+    def __init__(self, source, headers, show_dmesg=False):
+        self.files = headers + [source]
+        self.source_file = source
+        self.headers_file = headers
+        executable = re.sub('\.[^.]*$', '', source) \
+                     .replace(TESTS_DIR, BUILD_DIR)
+        ScribeTestCase.__init__(self, executable, show_dmesg)
 
     def setUp(self):
         # Check if the output is newer than the source
@@ -64,28 +91,6 @@ class ScribeTestCase(unittest.TestCase):
         compiler.communicate(code)
         if compiler.wait():
             raise CompileError()
-
-    def runTest(self):
-        log = open(self.logfile, 'w+')
-
-        ps = scribe.Popen(log, self.executable, record = True,
-                          show_dmesg = self.show_dmesg,
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        (rcd_stdout, rcd_stderr) = ps.communicate()
-        rcd_err = ps.wait()
-
-        log.seek(0)
-
-        ps = scribe.Popen(log, replay = True, backtrace_len = 100,
-                          show_dmesg = self.show_dmesg,
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        (rpl_stdout, rpl_stderr) = ps.communicate()
-        rpl_err = ps.wait()
-
-        self.assertEqual(rcd_stdout, rcd_stdout)
-        self.assertEqual(rcd_stderr, rcd_stderr)
-        self.assertEqual(rcd_err, rcd_err)
-
 
 
 def get_sources(path, headers=[]):
@@ -117,7 +122,7 @@ if __name__ == '__main__':
 
     path_filter = args or ['']
 
-    test_cases = (ScribeTestCase(source, headers, show_dmesg = options.dmesg)
+    test_cases = (ScribeGCCTestCase(source, headers, show_dmesg = options.dmesg)
                   for source, headers in get_sources(TESTS_DIR)
                   if True in (source.find(f) != -1 for f in path_filter))
     test_suite = unittest.TestSuite()
