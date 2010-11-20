@@ -7,6 +7,7 @@ import subprocess
 import re
 import unittest
 import scribe
+import shutil
 
 COMPILER_CMD = 'gcc -O2 -lscribe -x c - -o'
 DIST_DIR = sys.path[0]
@@ -93,6 +94,29 @@ class ScribeGCCTestCase(ScribeTestCase):
             raise CompileError()
 
 
+class ScribeBinTestCase(ScribeTestCase):
+    def __init__(self, binary, show_dmesg=False):
+        self.binary = binary
+        executable = binary.replace(TESTS_DIR, BUILD_DIR)
+        ScribeTestCase.__init__(self, executable, show_dmesg)
+
+    def setUp(self):
+        # Check if the output is newer than the source
+        try:
+            src_mtime = os.stat(self.binary).st_mtime
+            out_mtime = os.stat(self.executable).st_mtime
+            if out_mtime > src_mtime:
+                return
+        except OSError:
+            pass
+
+        # If not, copy it over
+        out_dir = os.path.split(self.executable)[0]
+        mkdir_p(out_dir)
+        shutil.copyfile(self.binary, self.executable)
+        shutil.copystat(self.binary, self.executable)
+
+
 def get_sources(path, headers=[]):
     """ returns a list of tuples (source, [headers])
     """
@@ -108,6 +132,14 @@ def get_sources(path, headers=[]):
     return [res for d in dirs for res in get_sources(d, headers)] + \
            [(f, list(headers)) for f in source_files]
 
+def get_binaries(path):
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            full_path = os.path.join(root,file)
+            if os.access(full_path, os.X_OK):
+                 yield full_path
+
+
 if __name__ == '__main__':
     from optparse import OptionParser
     usage = 'usage: %prog [options] test_filter'
@@ -122,10 +154,14 @@ if __name__ == '__main__':
 
     path_filter = args or ['']
 
-    test_cases = (ScribeGCCTestCase(source, headers, show_dmesg = options.dmesg)
-                  for source, headers in get_sources(TESTS_DIR)
-                  if True in (source.find(f) != -1 for f in path_filter))
+    gcc_tests = (ScribeGCCTestCase(source, headers, show_dmesg = options.dmesg)
+                 for source, headers in get_sources(TESTS_DIR)
+                 if True in (source.find(f) != -1 for f in path_filter))
+    bin_tests = (ScribeBinTestCase(binary, show_dmesg = options.dmesg)
+                 for binary in get_binaries(TESTS_DIR)
+                 if True in (binary.find(f) != -1 for f in path_filter))
     test_suite = unittest.TestSuite()
-    test_suite.addTests(test_cases)
+    test_suite.addTests(gcc_tests)
+    test_suite.addTests(bin_tests)
     test_runner = unittest.TextTestRunner(verbosity=options.verbosity)
     test_runner.run(test_suite)
