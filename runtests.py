@@ -8,6 +8,7 @@ import re
 import unittest
 import scribe
 import shutil
+import itertools
 
 COMPILER_CMD = 'gcc -O2 -lscribe -x c - -o'
 DIST_DIR = sys.path[0]
@@ -27,11 +28,12 @@ class CompileError(BaseException):
     pass
 
 class ScribeTestCase(unittest.TestCase):
-    def __init__(self, executable, show_dmesg=False):
+    def __init__(self, executable, show_dmesg, backtrace_len):
         self.executable = executable
         self.logfile = executable + '.log'
         self.description = executable
         self.show_dmesg = show_dmesg
+        self.backtrace_len = backtrace_len
         unittest.TestCase.__init__(self)
 
     def shortDescription(self):
@@ -48,8 +50,8 @@ class ScribeTestCase(unittest.TestCase):
 
         log.seek(0)
 
-        ps = scribe.Popen(log, replay = True, backtrace_len = 100,
-                          show_dmesg = self.show_dmesg,
+        ps = scribe.Popen(log, replay = True, show_dmesg = self.show_dmesg,
+                          backtrace_len = self.backtrace_len,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (rpl_stdout, rpl_stderr) = ps.communicate()
         rpl_err = ps.wait()
@@ -60,13 +62,13 @@ class ScribeTestCase(unittest.TestCase):
 
 
 class ScribeGCCTestCase(ScribeTestCase):
-    def __init__(self, source, headers, show_dmesg=False):
+    def __init__(self, source, headers, show_dmesg, backtrace_len):
         self.files = headers + [source]
         self.source_file = source
         self.headers_file = headers
         executable = re.sub('\.[^.]*$', '', source) \
                      .replace(TESTS_DIR, BUILD_DIR)
-        ScribeTestCase.__init__(self, executable, show_dmesg)
+        ScribeTestCase.__init__(self, executable, show_dmesg, backtrace_len)
 
     def setUp(self):
         # Check if the output is newer than the source
@@ -95,10 +97,10 @@ class ScribeGCCTestCase(ScribeTestCase):
 
 
 class ScribeBinTestCase(ScribeTestCase):
-    def __init__(self, binary, show_dmesg=False):
+    def __init__(self, binary, show_dmesg, backtrace_len):
         self.binary = binary
         executable = binary.replace(TESTS_DIR, BUILD_DIR)
-        ScribeTestCase.__init__(self, executable, show_dmesg)
+        ScribeTestCase.__init__(self, executable, show_dmesg, backtrace_len)
 
     def setUp(self):
         # Check if the output is newer than the source
@@ -150,18 +152,36 @@ if __name__ == '__main__':
     parser.add_option("-d", "--dmesg",
                       action="store_true", dest="dmesg", default=False,
                       help="Show a dmesg trace if the replay diverges")
+    parser.add_option('-b', '--backtrace', dest='backtrace_len',
+                      metavar='LEN', type='int', default=100,
+                      help='Specify the maximum number of entries in the backtrace. ' \
+                            'The default is 100.')
+    parser.add_option('-n', '--num-runs', dest='num_runs',
+                      metavar='NUM', type='int', default=1,
+                      help='The number of times the test should run, '
+                      '0 is forever, 1 is the default.')
     (options, args) = parser.parse_args()
 
     path_filter = args or ['']
 
-    gcc_tests = (ScribeGCCTestCase(source, headers, show_dmesg = options.dmesg)
+    gcc_tests = (ScribeGCCTestCase(source, headers, show_dmesg = options.dmesg,
+                                   backtrace_len = options.backtrace_len)
                  for source, headers in get_sources(TESTS_DIR)
                  if True in (source.find(f) != -1 for f in path_filter))
-    bin_tests = (ScribeBinTestCase(binary, show_dmesg = options.dmesg)
+    bin_tests = (ScribeBinTestCase(binary, show_dmesg = options.dmesg,
+                                   backtrace_len = options.backtrace_len)
                  for binary in get_binaries(TESTS_DIR)
                  if True in (binary.find(f) != -1 for f in path_filter))
     test_suite = unittest.TestSuite()
     test_suite.addTests(gcc_tests)
     test_suite.addTests(bin_tests)
     test_runner = unittest.TextTestRunner(verbosity=options.verbosity)
-    test_runner.run(test_suite)
+
+    if options.num_runs == 0:
+        repeat = itertools.repeat(None)
+    else:
+        repeat = itertools.repeat(None, options.num_runs)
+    for _ in repeat:
+        res = test_runner.run(test_suite)
+        if not res.wasSuccessful():
+            break
