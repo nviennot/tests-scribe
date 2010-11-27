@@ -10,7 +10,7 @@ import scribe
 import shutil
 import itertools
 
-COMPILER_CMD = 'gcc -O2 -lscribe -x c - -o'
+COMPILER_CMD = 'gcc -O2 -lscribe -lpthread -x c - -o'
 DIST_DIR = sys.path[0]
 BUILD_DIR = os.path.join(DIST_DIR, 'build')
 TESTS_DIR = os.path.join(DIST_DIR, 'tests')
