@@ -11,6 +11,7 @@ int main(int argc, char **argv)
 			usleep(10);
 			scribe_enable();
 		}
+		clear_regs();
 	}
 
 	int f = open("/etc/passwd", O_RDONLY);

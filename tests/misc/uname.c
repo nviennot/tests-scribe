@@ -30,6 +30,7 @@ int main(int argc, char **argv)
 		sethostname(new_hostname, strlen(new_hostname));
 		scribe_enable();
 	}
+	clear_regs();
 
 	uname(&uts);
 
@@ -38,6 +39,7 @@ int main(int argc, char **argv)
 		sethostname(old_hostname, strlen(old_hostname));
 		scribe_enable();
 	}
+	clear_regs();
 
 	write(1, &uts, sizeof(uts));
 
