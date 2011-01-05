@@ -28,16 +28,18 @@ class CompileError(BaseException):
     pass
 
 class ScribeTestCase(unittest.TestCase):
-    def __init__(self, executable, show_dmesg, backtrace_len):
+    def __init__(self, executable, show_dmesg, flags, backtrace_len):
         self.executable = executable
         self.logfile = executable + '.log'
         self.description = executable
         self.show_dmesg = show_dmesg
+        self.flags = flags
         self.backtrace_len = backtrace_len
         unittest.TestCase.__init__(self)
 
     def shortDescription(self):
-        return self.description
+        return '%s (%s log)' % (self.description,
+                                ("min", "full")[self.flags != 0])
 
     def runTest(self):
         log = open(self.logfile, 'w+')
@@ -51,7 +53,7 @@ class ScribeTestCase(unittest.TestCase):
         log.seek(0)
 
         ps = scribe.Popen(log, replay = True, show_dmesg = self.show_dmesg,
-                          backtrace_len = self.backtrace_len,
+                          flags = self.flags, backtrace_len = self.backtrace_len,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (rpl_stdout, rpl_stderr) = ps.communicate()
         rpl_err = ps.wait()
@@ -62,13 +64,14 @@ class ScribeTestCase(unittest.TestCase):
 
 
 class ScribeGCCTestCase(ScribeTestCase):
-    def __init__(self, source, headers, show_dmesg, backtrace_len):
+    def __init__(self, source, headers, show_dmesg, flags, backtrace_len):
         self.files = headers + [source]
         self.source_file = source
         self.headers_file = headers
         executable = re.sub('\.[^.]*$', '', source) \
                      .replace(TESTS_DIR, BUILD_DIR)
-        ScribeTestCase.__init__(self, executable, show_dmesg, backtrace_len)
+        ScribeTestCase.__init__(self, executable, show_dmesg,
+                                flags, backtrace_len)
 
     def setUp(self):
         # Check if the output is newer than the source
@@ -97,10 +100,11 @@ class ScribeGCCTestCase(ScribeTestCase):
 
 
 class ScribeBinTestCase(ScribeTestCase):
-    def __init__(self, binary, show_dmesg, backtrace_len):
+    def __init__(self, binary, show_dmesg, flags, backtrace_len):
         self.binary = binary
         executable = binary.replace(TESTS_DIR, BUILD_DIR)
-        ScribeTestCase.__init__(self, executable, show_dmesg, backtrace_len)
+        ScribeTestCase.__init__(self, executable, show_dmesg,
+                                flags, backtrace_len)
 
     def setUp(self):
         # Check if the output is newer than the source
@@ -164,17 +168,21 @@ if __name__ == '__main__':
 
     path_filter = args or ['']
 
-    gcc_tests = (ScribeGCCTestCase(source, headers, show_dmesg = options.dmesg,
-                                   backtrace_len = options.backtrace_len)
-                 for source, headers in get_sources(TESTS_DIR)
-                 if True in (source.find(f) != -1 for f in path_filter))
-    bin_tests = (ScribeBinTestCase(binary, show_dmesg = options.dmesg,
-                                   backtrace_len = options.backtrace_len)
-                 for binary in get_binaries(TESTS_DIR)
-                 if True in (binary.find(f) != -1 for f in path_filter))
     test_suite = unittest.TestSuite()
-    test_suite.addTests(gcc_tests)
-    test_suite.addTests(bin_tests)
+    for flags in [0, 0xff]:
+        gcc_tests = (ScribeGCCTestCase(source, headers,
+                                       show_dmesg = options.dmesg,
+                                       flags = flags,
+                                       backtrace_len = options.backtrace_len)
+                     for source, headers in get_sources(TESTS_DIR)
+                     if True in (source.find(f) != -1 for f in path_filter))
+        bin_tests = (ScribeBinTestCase(binary, show_dmesg = options.dmesg,
+                                       flags = flags,
+                                       backtrace_len = options.backtrace_len)
+                     for binary in get_binaries(TESTS_DIR)
+                     if True in (binary.find(f) != -1 for f in path_filter))
+        test_suite.addTests(gcc_tests)
+        test_suite.addTests(bin_tests)
     test_runner = unittest.TextTestRunner(verbosity=options.verbosity)
 
     if options.num_runs == 0:
