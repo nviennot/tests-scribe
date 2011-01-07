@@ -45,7 +45,7 @@ class ScribeTestCase(unittest.TestCase):
         log = open(self.logfile, 'w+')
 
         ps = scribe.Popen(log, self.executable, record = True,
-                          show_dmesg = self.show_dmesg,
+                          show_dmesg = self.show_dmesg, flags = self.flags,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (rcd_stdout, rcd_stderr) = ps.communicate()
         rcd_err = ps.wait()
@@ -53,7 +53,7 @@ class ScribeTestCase(unittest.TestCase):
         log.seek(0)
 
         ps = scribe.Popen(log, replay = True, show_dmesg = self.show_dmesg,
-                          flags = self.flags, backtrace_len = self.backtrace_len,
+                          backtrace_len = self.backtrace_len,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (rpl_stdout, rpl_stderr) = ps.communicate()
         rpl_err = ps.wait()
@@ -169,7 +169,7 @@ if __name__ == '__main__':
     path_filter = args or ['']
 
     test_suite = unittest.TestSuite()
-    for flags in [0, 0xff]:
+    for flags in [0, 0xff00]:
         gcc_tests = (ScribeGCCTestCase(source, headers,
                                        show_dmesg = options.dmesg,
                                        flags = flags,
