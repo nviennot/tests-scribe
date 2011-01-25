@@ -48,6 +48,7 @@ class ScribeTestCase(unittest.TestCase):
                           show_dmesg = self.show_dmesg, flags = self.flags,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (rcd_stdout, rcd_stderr) = ps.communicate()
+        ps.scribe_wait()
         rcd_err = ps.wait()
 
         log.seek(0)
@@ -56,6 +57,7 @@ class ScribeTestCase(unittest.TestCase):
                           backtrace_len = self.backtrace_len,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (rpl_stdout, rpl_stderr) = ps.communicate()
+        ps.scribe_wait()
         rpl_err = ps.wait()
 
         self.assertEqual(rcd_stdout, rcd_stdout)
