@@ -171,7 +171,7 @@ if __name__ == '__main__':
     path_filter = args or ['']
 
     test_suite = unittest.TestSuite()
-    for flags in [0, 0x00ffff00]:
+    for flags in [0, scribe.SCRIBE_ALL]:
         gcc_tests = (ScribeGCCTestCase(source, headers,
                                        show_dmesg = options.dmesg,
                                        flags = flags,
