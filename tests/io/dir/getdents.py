@@ -8,9 +8,9 @@ import tempfile
 tmp_dir = tempfile.mkdtemp('scribe-test-getdents')
 
 def child():
-    for i in range(50):
+    for i in range(20):
         paths = []
-        for j in range(50):
+        for j in range(20):
             (f, p) = tempfile.mkstemp(dir=tmp_dir)
             os.close(f)
             paths.append(p)

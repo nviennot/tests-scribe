@@ -20,7 +20,7 @@ void register_sig_handler()
 
 void do_sleep(void *arg)
 {
-	usleep(10000);
+	usleep(100000);
 }
 
 int main(int argc, char **argv)
@@ -45,7 +45,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	close(wfd);
-	usleep(1000);
+	usleep(10000);
 	close(rfd);
 	return 0;
 }

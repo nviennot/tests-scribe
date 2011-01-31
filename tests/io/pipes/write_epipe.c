@@ -20,7 +20,7 @@ void register_sig_handler()
 
 void do_sleep(void *arg)
 {
-	usleep(10000);
+	usleep(100000);
 }
 
 int main(int argc, char **argv)
@@ -37,7 +37,7 @@ int main(int argc, char **argv)
 
 	if (!fork()) {
 		close(rfd);
-		usleep(1000);
+		usleep(10000);
 		res = write(wfd, "Hello ", strlen("Hello "));
 		printf("write() = %d\n", res);
 		write(wfd, "World", strlen("World"));

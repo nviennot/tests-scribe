@@ -20,7 +20,7 @@ void register_sig_handler()
 
 void do_sleep(void *arg)
 {
-	usleep(10000);
+	usleep(100000);
 }
 
 int main(int argc, char **argv)
@@ -44,7 +44,7 @@ int main(int argc, char **argv)
 	}
 	close(wfd);
 
-	usleep(1000);
+	usleep(10000);
 
 	while (1) {
 		res = read(rfd, buffer, sizeof(buffer));
