@@ -60,9 +60,9 @@ class ScribeTestCase(unittest.TestCase):
         ps.scribe_wait()
         rpl_err = ps.wait()
 
-        self.assertEqual(rcd_stdout, rcd_stdout)
-        self.assertEqual(rcd_stderr, rcd_stderr)
-        self.assertEqual(rcd_err, rcd_err)
+        self.assertEqual(rcd_stdout, rpl_stdout)
+        self.assertEqual(rcd_stderr, rpl_stderr)
+        self.assertEqual(rcd_err, rpl_err)
 
 
 class ScribeGCCTestCase(ScribeTestCase):
