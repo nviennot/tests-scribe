@@ -2,17 +2,16 @@
 #include <fcntl.h>
 #include <scribe.h>
 
+void do_sleep(void *arg)
+{
+	usleep(100000);
+}
+
 int main(int argc, char **argv)
 {
 	char x;
-	if (fork()) {
-		if (scribe_is_replaying()) {
-			scribe_disable();
-			usleep(10);
-			scribe_enable();
-		}
-		clear_regs();
-	}
+	if (fork())
+		scribe_on_replay(do_sleep, NULL);
 
 	int f = open("/etc/passwd", O_RDONLY);
 	read(f, &x, 1);
