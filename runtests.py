@@ -30,7 +30,7 @@ class CompileError(BaseException):
 class ScribeTestCase(unittest.TestCase):
     def __init__(self, executable, show_dmesg, flags, backtrace_len):
         self.executable = executable
-        self.logfile = executable + '.log'
+        self.logfile = executable + ('.%08x.log' % flags)
         self.description = executable
         self.show_dmesg = show_dmesg
         self.flags = flags
