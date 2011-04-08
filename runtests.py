@@ -43,21 +43,21 @@ class ScribeTestCase(unittest.TestCase):
 
     def runTest(self):
         log = open(self.logfile, 'w+')
-
-        ps = scribe.Popen(log, self.executable, record = True,
-                          show_dmesg = self.show_dmesg, flags = self.flags,
+        context = scribe.Context(log, show_dmesg = self.show_dmesg)
+        ps = scribe.Popen(context, self.executable, record = True,
+                          flags = self.flags,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (rcd_stdout, rcd_stderr) = ps.communicate()
-        ps.scribe_wait()
+        context.wait()
         rcd_err = ps.wait()
 
         log.seek(0)
-
-        ps = scribe.Popen(log, replay = True, show_dmesg = self.show_dmesg,
-                          backtrace_len = self.backtrace_len,
+        context = scribe.Context(log, show_dmesg = self.show_dmesg,
+                                 backtrace_len = self.backtrace_len)
+        ps = scribe.Popen(context, replay = True,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (rpl_stdout, rpl_stderr) = ps.communicate()
-        ps.scribe_wait()
+        context.wait()
         rpl_err = ps.wait()
 
         self.assertEqual(rcd_stdout, rpl_stdout)
