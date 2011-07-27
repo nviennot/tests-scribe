@@ -115,7 +115,6 @@ int server(const char *addr, int abstract)
 		child = fork();
 		if(child == 0)
 		{
-			close(socket_fd);
 			/* now inside newly created connection handling process */
 			return connection_handler(connection_fd);
 		}
